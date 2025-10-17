@@ -3,6 +3,6 @@ opencv-python-headless==4.9.0.80
 pandas
 numpy
 matplotlib
-scikit-learn
-Pillow
 seaborn
+Pillow
+openpyxl
