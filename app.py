@@ -7,13 +7,18 @@ import numpy as np
 from datetime import datetime
 import os
 
+# -------------------------------
+# File paths and logs
+# -------------------------------
 LOG_FILE = "auth_logs.csv"
 
-# ---- Initialize Log File ----
+# Initialize log file if it doesn't exist
 if not os.path.exists(LOG_FILE):
     pd.DataFrame(columns=["User", "Status", "Timestamp"]).to_csv(LOG_FILE, index=False)
 
-# ---- Compare Fingerprints ----
+# -------------------------------
+# Compare fingerprints
+# -------------------------------
 def compare_fingerprints(uploaded_img, stored_img):
     uploaded_gray = cv2.cvtColor(uploaded_img, cv2.COLOR_BGR2GRAY)
     stored_gray = cv2.cvtColor(stored_img, cv2.COLOR_BGR2GRAY)
@@ -25,25 +30,37 @@ def compare_fingerprints(uploaded_img, stored_img):
     mse = diff / float(uploaded_gray.shape[0] * uploaded_gray.shape[1])
     return mse
 
-# ---- Log Attempts ----
+# -------------------------------
+# Log attempts
+# -------------------------------
 def log_attempt(user, status):
     df = pd.read_csv(LOG_FILE)
-    new_entry = {"User": user, "Status": status, "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    new_entry = {
+        "User": user,
+        "Status": status,
+        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
     df = pd.concat([df, pd.DataFrame([new_entry])], ignore_index=True)
     df.to_csv(LOG_FILE, index=False)
 
-# ---- Reset Logs ----
+# -------------------------------
+# Reset logs
+# -------------------------------
 def reset_logs():
     pd.DataFrame(columns=["User", "Status", "Timestamp"]).to_csv(LOG_FILE, index=False)
 
-# ---- User Database (templates) ----
+# -------------------------------
+# Fingerprint templates (relative paths)
+# -------------------------------
 fingerprint_db = {
-    "Alice": "c:/StreamlitApps/FingerPrintApp/templates/alice.png",
-    "Bob": "c:/StreamlitApps/FingerPrintApp/templates/bob.png",
-    "Charlie": "c:/StreamlitApps/FingerPrintApp/templates/charlie.png"
+    "Alice": "templates/alice.png",
+    "Bob": "templates/bob.png",
+    "Charlie": "templates/charlie.png"
 }
 
-# ---- Streamlit UI ----
+# -------------------------------
+# Streamlit UI
+# -------------------------------
 st.set_page_config(page_title="Fingerprint Authentication System", layout="wide")
 st.title("🔒 Fingerprint Authentication System")
 
@@ -53,31 +70,37 @@ uploaded_file = st.file_uploader("📂 Upload Fingerprint Image", type=["png", "
 if uploaded_file is not None:
     file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
     uploaded_img = cv2.imdecode(file_bytes, 1)
-    st.image(uploaded_img, caption="Uploaded Fingerprint", use_container_width=True)
 
-    if st.button("Authenticate"):
-        stored_img = cv2.imread(fingerprint_db[selected_user])
+    if uploaded_img is not None:
+        st.image(uploaded_img, caption="Uploaded Fingerprint", use_container_width=True)
 
-        if stored_img is None:
-            st.error(f"⚠️ Stored fingerprint not found for {selected_user}")
-        else:
-            mse = compare_fingerprints(uploaded_img, stored_img)
+        if st.button("Authenticate"):
+            stored_img = cv2.imread(fingerprint_db[selected_user])
 
-            if mse < 1000:  # threshold
-                status = "Success"
-                st.success(f"✅ Authentication Success for {selected_user}")
+            if stored_img is None:
+                st.error(f"⚠️ Stored fingerprint not found for {selected_user}")
             else:
-                status = "Failed"
-                st.error(f"❌ Authentication Failed for {selected_user}")
+                mse = compare_fingerprints(uploaded_img, stored_img)
 
-            log_attempt(selected_user, status)
+                if mse < 1000:  # threshold
+                    status = "Success"
+                    st.success(f"✅ Authentication Success for {selected_user}")
+                else:
+                    status = "Failed"
+                    st.error(f"❌ Authentication Failed for {selected_user}")
 
-# ---- Show Logs ----
+                log_attempt(selected_user, status)
+    else:
+        st.error("❌ Uploaded image could not be read.")
+
+# -------------------------------
+# Show Logs
+# -------------------------------
 st.subheader("📋 Authentication Logs")
 df = pd.read_csv(LOG_FILE)
 st.dataframe(df, use_container_width=True)
 
-# ---- Download + Reset Buttons ----
+# Download + Reset buttons
 if not df.empty:
     # CSV download
     csv = df.to_csv(index=False).encode("utf-8")
@@ -104,7 +127,9 @@ if not df.empty:
         reset_logs()
         st.warning("Logs have been cleared. Refresh the page.")
 
-# ---- Dashboard / Analytics ----
+# -------------------------------
+# Dashboard / Analytics
+# -------------------------------
 if not df.empty:
     df["Timestamp"] = pd.to_datetime(df["Timestamp"])
 
